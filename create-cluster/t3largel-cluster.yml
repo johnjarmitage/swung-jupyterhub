@@ -1,0 +1,13 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: notebook
+  region: eu-west-1
+
+nodeGroups:
+  - name: t3large-k8s
+    minsize: 1
+    maxsize: 4
+    instanceType: t3.large
+    desiredCapacity: 1

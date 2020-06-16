@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: notebook-container
-        image: ****.dkr.ecr.eu-west-1.amazonaws.com/notebook-library:1.0
+        image: ****.dkr.ecr.eu-west-1.amazonaws.com/notebook-library:1.0  # **** is the account number
         ports:
           - name: web
             containerPort: 8888

@@ -84,4 +84,4 @@ kubectl -n library apply -f deploy-cluster/deploy-notebook-library.yml
 kubectl -n library apply -f deploy-cluster/loadbalancer-notebook-library.yml
 ```
 
-Unfortunately (and not surprisingly) a micro instance is too small.
+Unfortunately (and not surprisingly) a micro instance is too small. But as a proof of concept this works. 
