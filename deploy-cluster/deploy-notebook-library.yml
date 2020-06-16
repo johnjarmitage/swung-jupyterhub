@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notebook
+  namespace: library
+  labels:
+    app: notebook
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      role: frontend
+  template:
+    metadata:
+      labels:
+        role: frontend
+    spec:
+      containers:
+      - name: notebook-container
+        image: ****.dkr.ecr.eu-west-1.amazonaws.com/notebook-library:1.0
+        ports:
+          - name: web
+            containerPort: 8888
+            protocol: TCP

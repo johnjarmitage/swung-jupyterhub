@@ -1,0 +1,11 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: basic-micro
+  region: eu-west-1
+
+nodeGroups:
+  - name: micro-k8s
+    instanceType: t2.micro
+    desiredCapacity: 2
