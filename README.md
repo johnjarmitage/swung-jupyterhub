@@ -96,7 +96,7 @@ To navigate to the notebook I use the address of loadbalancer, the port specifie
 
 *Unfortunately (and not surprisingly) a micro instance is too small. But as a proof of concept this works.*
 
-# Using `helm` to deploy a jupyter-hub
+# Using `helm` (version 3) to deploy a jupyter-hub
 
 I am going to follow [this](https://zero-to-jupyterhub.readthedocs.io/en/latest/setup-jupyterhub/setup-jupyterhub.html) guide mostly to set up the deployment using `helm` to orchestrate `kubectl`. The advantage here is that those instructions set up a key to get into the Jupyter lab or notebook without looking at the log file of the pod. 
 
@@ -112,7 +112,6 @@ proxy:
   secretToken: "pasted from `openssl rand -hex 32`"
 singleuser:
   defaultUrl: "/lab"
-singleuser:
   image:
     name: ****.dkr.ecr.eu-west-1.amazonaws.com/notebook-library
     tag: 1.0
@@ -127,12 +126,14 @@ Create the namespace for the deployment:
 ```commandline
 kubectl create ns library
 ```
-Run the `helm` deployment:
+Run the `helm` deployment (there is a [issue](https://github.com/jupyterhub/zero-to-jupyterhub-k8s/issues/1637) with version 0.9.0 that means that the loadbalancer fails on health checks, so I use version 0.8.2):
 ```commandline
 helm upgrade --install jhub jupyterhub/jupyterhub --namespace library \
-  --version=0.9.0 --values config.yml
+  --version=0.8.2 --values config.yml
 ```
-where `jhub` is the release name for the deployment within the namespace `library`. To list this deployment you need to specify the namespace:
+where `jhub` is the release name for the deployment within the namespace `library`. It will then tell you how to navigate to the notebook.
+ 
+To list this deployment you need to specify the namespace:
 ```commandline
 helm list --namespace library
 ```
@@ -140,3 +141,5 @@ To remove the deployment you likewise need to specify the namespace:
 ```commandline
 helm delete jhub --namespace library
 ```
+
+**However, now I need to mount a volume to the k8s cluster that contains example notebooks...**
