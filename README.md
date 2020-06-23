@@ -84,4 +84,59 @@ kubectl -n library apply -f deploy-cluster/deploy-notebook-library.yml
 kubectl -n library apply -f deploy-cluster/loadbalancer-notebook-library.yml
 ```
 
-Unfortunately (and not surprisingly) a micro instance is too small. But as a proof of concept this works. 
+To access the notebook I need to get the key, so first I get the pod name,
+```commandline
+kubectl -n library get pods
+```
+and then look a the log of the pod to get the key,
+```commandline
+kubectl -n library logs <name of pod>
+```
+To navigate to the notebook I use the address of loadbalancer, the port specified followed by the key from the log file. This is not ideal for running as a hub for other users, but as a proof of concept it looks OK.
+
+*Unfortunately (and not surprisingly) a micro instance is too small. But as a proof of concept this works.*
+
+# Using `helm` to deploy a jupyter-hub
+
+I am going to follow [this](https://zero-to-jupyterhub.readthedocs.io/en/latest/setup-jupyterhub/setup-jupyterhub.html) guide mostly to set up the deployment using `helm` to orchestrate `kubectl`. The advantage here is that those instructions set up a key to get into the Jupyter lab or notebook without looking at the log file of the pod. 
+
+First I deploy a larger cluster `t3.large`:
+```commandline
+eksctl create cluster -f create-cluster/t3large-cluster.yml
+```
+Then as described I want to create a hex key, so I follow the [guide](https://zero-to-jupyterhub.readthedocs.io/en/latest/setup-jupyterhub/setup-jupyterhub.html) to create the key. I also want to use my docker image and have the Jupyter-lab interface as default. So I create the `config.yml` file as described below (see [here](https://zero-to-jupyterhub.readthedocs.io/en/latest/customizing/user-environment.html#choose-and-use-an-existing-docker-image)):
+```yaml
+# some choices to customize the user environment
+
+proxy:
+  secretToken: "pasted from `openssl rand -hex 32`"
+singleuser:
+  defaultUrl: "/lab"
+singleuser:
+  image:
+    name: ****.dkr.ecr.eu-west-1.amazonaws.com/notebook-library
+    tag: 1.0
+```
+where `****` is the AWS account ID. Helm uses these values to then deploy a k8s cluster. 
+
+Check the cluster exists:
+```commandline
+kubectl get svc
+```
+Create the namespace for the deployment:
+```commandline
+kubectl create ns library
+```
+Run the `helm` deployment:
+```commandline
+helm upgrade --install jhub jupyterhub/jupyterhub --namespace library \
+  --version=0.9.0 --values config.yml
+```
+where `jhub` is the release name for the deployment within the namespace `library`. To list this deployment you need to specify the namespace:
+```commandline
+helm list --namespace library
+```
+To remove the deployment you likewise need to specify the namespace:
+```commandline
+helm delete jhub --namespace library
+```
