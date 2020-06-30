@@ -47,11 +47,11 @@ The first step is to create a repository within the Amazon Elastic Container Reg
 
 For now I will use the Dockerfile within [this](https://github.com/johnjarmitage/notebook-library) repository. The first step is to build the image:
 ```commandline
-docker build -t notebook-library:1.0 .
+docker build -t notebook-library:1.1 .
 ```
 Now I will tag it so it can be exported to the AWS ECR service:
 ```commandline
-docker tag notebook-library:1.0 ****.dkr.ecr.eu-west-1.amazonaws.com/notebook-library:1.0
+docker tag notebook-library:1.1 ****.dkr.ecr.eu-west-1.amazonaws.com/notebook-library:1.1
 ```
 (**** is your AWS account number *not the alias*)
 
@@ -61,7 +61,7 @@ aws ecr get-login --region eu-west-1 --no-include-email
 ```
 This means we can now put the Docker image into the ECR:
 ```commandline
-docker push ****.dkr.ecr.eu-west-1.amazonaws.com/notebook-library:1.0
+docker push ****.dkr.ecr.eu-west-1.amazonaws.com/notebook-library:1.1
 ```
 For me this took quite some time given the size of the Docker image. It will be interesting to see if I can fit it on a k8s cluster running on a micro instance.
 
@@ -98,13 +98,19 @@ To navigate to the notebook I use the address of loadbalancer, the port specifie
 
 # Using `helm` (version 3) to deploy a jupyter-hub
 
-I am going to follow [this](https://zero-to-jupyterhub.readthedocs.io/en/latest/setup-jupyterhub/setup-jupyterhub.html) guide mostly to set up the deployment using `helm` to orchestrate `kubectl`. The advantage here is that those instructions set up a key to get into the Jupyter lab or notebook without looking at the log file of the pod. 
+I am going to follow [this](https://zero-to-jupyterhub.readthedocs.io/en/latest/setup-jupyterhub/setup-jupyterhub.html) guide mostly to set up the deployment using `helm` to orchestrate `kubectl`. 
 
 First I deploy a larger cluster `t3.large`:
 ```commandline
 eksctl create cluster -f create-cluster/t3large-cluster.yml
 ```
-Then as described I want to create a hex key, so I follow the [guide](https://zero-to-jupyterhub.readthedocs.io/en/latest/setup-jupyterhub/setup-jupyterhub.html) to create the key. I also want to use my docker image and have the Jupyter-lab interface as default. So I create the `config.yml` file as described below (see [here](https://zero-to-jupyterhub.readthedocs.io/en/latest/customizing/user-environment.html#choose-and-use-an-existing-docker-image)):
+Then as described I want to create a hex key, so I follow the [guide](https://zero-to-jupyterhub.readthedocs.io/en/latest/setup-jupyterhub/setup-jupyterhub.html) to create the key.
+
+* I also want to use my docker image and have the Jupyter-lab interface as default.
+* I want each user to get a copy of some notebooks (a library if you want), so in the [image](https://github.com/johnjarmitage/notebook-library/blob/master/Dockerfile) I copy the notebooks into the `/notebooks` folder. This then needs to be copied into the home directory of each instance of jupyter that is spawned by the hub. ([`nbgitpuller`](https://github.com/jupyterhub/nbgitpuller) could also be used to pull notebooks from a git repository, but that is for the future.)
+* I want only certain users to access the notebook. (Using OAuth2 linked to github would be nice, but again, for the future.)
+ 
+So I create the `config.yml` file as described below (see [here](https://zero-to-jupyterhub.readthedocs.io/en/latest/customizing/user-environment.html#choose-and-use-an-existing-docker-image)):
 ```yaml
 # some choices to customize the user environment
 
@@ -114,9 +120,24 @@ singleuser:
   defaultUrl: "/lab"
   image:
     name: ****.dkr.ecr.eu-west-1.amazonaws.com/notebook-library
-    tag: 1.0
+    tag: 1.1
+  lifecycleHooks:
+    postStart:
+      exec:
+        command:
+          - "sh"
+          - "-c"
+          - >
+            cp -r /notebooks /home/jovyan/.
+auth:
+  type: dummy
+  dummy:
+    password: "MyBestPassword"
+  whitelist:
+    users:
+      - user1
 ```
-where `****` is the AWS account ID. Helm uses these values to then deploy a k8s cluster. 
+where `****` is the AWS account ID. Helm uses these values to then deploy a k8s cluster. Obviously I use better passwords ...
 
 Check the cluster exists:
 ```commandline
@@ -142,4 +163,7 @@ To remove the deployment you likewise need to specify the namespace:
 helm delete jhub --namespace library
 ```
 
-**However, now I need to mount a volume to the k8s cluster that contains example notebooks...**
+# To Do
+
+- Link access to github user name and password.
+- Jupyter Lab widgets don't install, and it causes my test notebook to crash.
